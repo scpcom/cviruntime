@@ -38,6 +38,7 @@ fi
 BUILD_PATH=$TPU_SDK_BUILD_PATH
 
 CHIP_ID="${CHIP_ARCH,,}"
+[ $CHIP_ID = sg200x ] && CHIP_ID=cv181x
 echo "CHIP_ID=$CHIP_ID"
 
 # build host flatbuffers
