@@ -1,6 +1,7 @@
 #ifndef ARGPARSE_HPP_
 #define ARGPARSE_HPP_
 
+#include <string>
 #if __cplusplus >= 201103L
 #include <unordered_map>
 typedef std::unordered_map<std::string, size_t> IndexMap;
@@ -8,7 +9,6 @@ typedef std::unordered_map<std::string, size_t> IndexMap;
 #include <map>
 typedef std::map<std::string, size_t> IndexMap;
 #endif
-#include <string>
 #include <vector>
 #include <typeinfo>
 #include <stdexcept>
@@ -163,10 +163,79 @@ void strip_brackets(std::string &str) {
  */
 class ArgumentParser {
 private:
+  class Any;
   class Argument;
+  class PlaceHolder;
+  class Holder;
   typedef std::string String;
+  typedef std::vector<Any> AnyVector;
   typedef std::vector<String> StringVector;
   typedef std::vector<Argument> ArgumentVector;
+
+  // --------------------------------------------------------------------------
+  // Type-erasure internal storage
+  // --------------------------------------------------------------------------
+  class Any {
+  public:
+      // constructor
+      Any() : content(0) {}
+      // destructor
+      ~Any() { delete content; }
+      // INWARD CONVERSIONS
+      Any(const Any& other) : content(other.content ? other.content->clone() : 0) {}
+      template <typename ValueType>
+      Any(const ValueType& other)
+              : content(new Holder<ValueType>(other)) {}
+      Any& swap(Any& other) {
+          std::swap(content, other.content);
+          return *this;
+      }
+      Any& operator=(const Any& rhs) {
+          Any tmp(rhs);
+          return swap(tmp);
+      }
+      template <typename ValueType>
+      Any& operator=(const ValueType& rhs) {
+          Any tmp(rhs);
+          return swap(tmp);
+      }
+      // OUTWARD CONVERSIONS
+      template <typename ValueType>
+      ValueType* toPtr() const {
+          return content->type_info() == typeid(ValueType)
+                     ? &static_cast<Holder<ValueType>*>(content)->held_
+                     : 0;
+      }
+      template <typename ValueType>
+      ValueType& castTo() {
+          if (!toPtr<ValueType>()) throw std::bad_cast();
+          return *toPtr<ValueType>();
+      }
+      template <typename ValueType>
+      const ValueType& castTo() const {
+          if (!toPtr<ValueType>()) throw std::bad_cast();
+          return *toPtr<ValueType>();
+      }
+
+  private:
+      // Inner placeholder interface
+      class PlaceHolder {
+      public:
+          virtual ~PlaceHolder() {}
+          virtual const std::type_info& type_info() const = 0;
+          virtual PlaceHolder* clone() const = 0;
+      };
+      // Inner template concrete instantiation of PlaceHolder
+      template <typename ValueType>
+      class Holder : public PlaceHolder {
+      public:
+          ValueType held_;
+          Holder(const ValueType& value) : held_(value) {}
+          virtual const std::type_info& type_info() const { return typeid(ValueType); }
+          virtual PlaceHolder* clone() const { return new Holder(held_); }
+      };
+      PlaceHolder* content;
+  };
 
   // --------------------------------------------------------------------------
   // Argument
@@ -253,7 +322,7 @@ private:
     if (arg.fixed && arg.fixed_nargs <= 1) {
       variables_.push_back(String());
     } else {
-      variables_.push_back(String());
+      variables_.push_back(StringVector());
     }
     if (!arg.short_name.empty())
       index_[arg.short_name] = N;
@@ -285,7 +354,7 @@ private:
   String app_name_;
   String final_name_;
   ArgumentVector arguments_;
-  StringVector variables_;
+  AnyVector variables_;
 
 public:
   ArgumentParser()
@@ -368,12 +437,9 @@ public:
               String("attempt to pass too many inputs to ").append(active_name),
               true);
         if (active.fixed && active.fixed_nargs == 1) {
-          variables_[index_[active_name]] = el;
+          variables_[index_[active_name]].castTo<String>() = el;
         } else {
-          String &variable = variables_[index_[active_name]];
-          StringVector value = castTo<StringVector>(variable);
-          value.push_back(el);
-          variable = toString(value);
+          variables_[index_[active_name]].castTo<StringVector>().push_back(el);
         }
         consumed++;
       } else {
@@ -420,12 +486,9 @@ public:
                           .append(" while parsing final required inputs"),
                       true);
       if (final.fixed && final.fixed_nargs == 1) {
-        variables_[index_[final_name_]] = el;
+        variables_[index_[final_name_]].castTo<String>() = el;
       } else {
-        String &variable = variables_[index_[final_name_]];
-        StringVector value = castTo<StringVector>(variable);
-        value.push_back(el);
-        variable = toString(value);
+        variables_[index_[final_name_]].castTo<StringVector>().push_back(el);
       }
       nfinal--;
     }
@@ -445,7 +508,7 @@ public:
     if (index_.count(delimit(name)) == 0)
       throw std::out_of_range("Key not found");
     size_t N = index_[delimit(name)];
-    return castTo<T>(variables_[N]);
+    return variables_[N].castTo<T>();
   }
 
   // --------------------------------------------------------------------------
