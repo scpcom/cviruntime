@@ -81,6 +81,12 @@ const char *pmubuf_output_file_env = NULL;
 TPU_DES_ELEMENT *p_element = NULL;
 TPU_LAYERID_ELEMENT *p_layer = NULL;
 
+#if defined(__aarch64__) || defined(__arm__)
+static unsigned long long to_llu(unsigned long u) { return u; }
+#else
+#define to_llu(u) u
+#endif
+
 static void tpu_pmu_fill_cmdbuf(uint8_t *v_dma_buf);
 
 static void reorder_back_tiu_cmdbuf_reg(uint8_t *cmdbuf)
@@ -504,10 +510,10 @@ static void tpu_pmu_fwrite_des()
 
     if (p_element[index].pmuEvent.type == TPU_PMUTYPE_TIU) {
       sprintf(lineStr, "%llu, %llu, %llu, %llu, %u, %u, %u, %u, %u, %s\n",
-                        p_element[index].pmuEvent.type,
-                        p_element[index].pmuEvent.desID,
-                        p_element[index].pmuEvent.eventCnt0,
-                        p_element[index].pmuEvent.eventCnt1,
+                        to_llu(p_element[index].pmuEvent.type),
+                        to_llu(p_element[index].pmuEvent.desID),
+                        to_llu(p_element[index].pmuEvent.eventCnt0),
+                        to_llu(p_element[index].pmuEvent.eventCnt1),
                         excelType,
                         p_element[index].pmuEvent.startTime,
                         p_element[index].pmuEvent.endTime - p_element[index].pmuEvent.startTime,
@@ -522,10 +528,10 @@ static void tpu_pmu_fwrite_des()
 
       sprintf(lineStr, "%llu, %llu, %llu, %llu, %u, %u, %u, %u, %u, %s, 0x%" PRIu64 ", 0x%" PRIu64 ", \
         %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u\n",
-                        p_element[index].pmuEvent.type,
-                        p_element[index].pmuEvent.desID,
-                        p_element[index].pmuEvent.eventCnt0,
-                        p_element[index].pmuEvent.eventCnt1,
+                        to_llu(p_element[index].pmuEvent.type),
+                        to_llu(p_element[index].pmuEvent.desID),
+                        to_llu(p_element[index].pmuEvent.eventCnt0),
+                        to_llu(p_element[index].pmuEvent.eventCnt1),
                         excelType,
                         p_element[index].pmuEvent.startTime,
                         p_element[index].pmuEvent.endTime - p_element[index].pmuEvent.startTime,
