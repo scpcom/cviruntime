@@ -10,7 +10,7 @@
 #include <runtime/section.hpp>
 #include <runtime/stream.hpp>
 
-#if defined(__aarch64__) || defined(__arm__) || (__GNUC__ < 6)
+#if (defined(__aarch64__) && (__GNUC__ < 11)) || (defined(__arm__) && (__GNUC__ < 11)) || (__GNUC__ < 6)
 #include <sys/syscall.h>
 #include <fcntl.h>
 
