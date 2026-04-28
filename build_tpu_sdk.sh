@@ -24,7 +24,7 @@ mkdir -p "$TPU_SDK_INSTALL_PATH"
 
 "$OSS_PATH"/run_build.sh -n zlib -e -t "$OSS_TARBALL_PATH" -i "$TPU_SDK_INSTALL_PATH"
 "$OSS_PATH"/run_build.sh -n flatbuffers -e -t "$OSS_TARBALL_PATH" -i "$TPU_SDK_INSTALL_PATH"/flatbuffers
-"$OSS_PATH"/run_build.sh -n opencv -e -t "$OSS_TARBALL_PATH" -i "$TPU_SDK_INSTALL_PATH"/opencv
+"$OSS_PATH"/run_build.sh -n opencv4.5 -e -t "$OSS_TARBALL_PATH" -i "$TPU_SDK_INSTALL_PATH"/opencv
 
 #
 # build
